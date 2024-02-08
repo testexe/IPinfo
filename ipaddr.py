@@ -4,7 +4,7 @@ import json
 from ipwhois import IPWhois
 
 def print_red(text):
-    print(f"\033[91m{text}\033[0m", end="")  # ANSI escape code for red text
+    print(f"\033[91m{text}\033[0m", end="")
 
 def get_api_key(file_name):
     try:
@@ -14,7 +14,7 @@ def get_api_key(file_name):
     except FileNotFoundError:
         print_red(f"{file_name} not found or inaccessible.")
         return None
-        
+
 def perform_scan(target):
     nm = nmap.PortScanner()
     nm.scan(target, arguments='-T4')
@@ -47,31 +47,50 @@ def check_abuseipdb_reputation(ip, api_key):
     else:
         print_red(f"Error: {response.status_code}, {response.text}")
 
-    print("\033[91m=\033[0m" * 30)  # Red line for AbuseIPDB separator
-
+    print("\033[91m=\033[0m" * 30)
 
 def check_alienvault_reputation(ip, api_key):
     url = f'https://otx.alienvault.com/api/v1/indicators/IPv4/{ip}'
-    headers = {
-        'X-OTX-API-KEY': api_key
-    }
+    headers = {'X-OTX-API-KEY': api_key}
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
         result = response.json()
-        result.pop('pulses', None)  # Remove 'pulses' key and its value from the response
-
-        # Save the modified result to a JSON file
         with open(f"{ip}_alienvault_info.json", "w") as file:
             json.dump(result, file, indent=4)
 
         print(f"AlienVault OTX results for IP {ip} saved in {ip}_alienvault_info.json")
+
+        print("Printing information from AlienVault result:")
+        print(f"WHOIS Lookup: {result.get('whois', 'N/A')}")
+        print(f"Reputation Score: {result.get('reputation', 'N/A')}")
+        print(f"Indicator Type: {result.get('type_title', 'N/A')}")
+        print(f"Indicator Value: {result.get('indicator', 'N/A')}")
+        print(f"Pulse Count: {result['pulse_info'].get('count', 'N/A')}")
+
+        print(f"ASN: {result.get('asn', 'N/A')}")
+
+        print(f"City: {result.get('city', 'N/A')}")
+        print(f"Region: {result.get('region', 'N/A')}")
+        print(f"Continent Code: {result.get('continent_code', 'N/A')}")
+        print(f"Country Code3: {result.get('country_code3', 'N/A')}")
+        print(f"Country Code2: {result.get('country_code2', 'N/A')}")
+        print(f"Subdivision: {result.get('subdivision', 'N/A')}")
+        print(f"Latitude: {result.get('latitude', 'N/A')}")
+        print(f"Longitude: {result.get('longitude', 'N/A')}")
+        print(f"Accuracy Radius: {result.get('accuracy_radius', 'N/A')} meters")
+        print(f"Country Code: {result.get('country_code', 'N/A')}")
+        print(f"Country Name: {result.get('country_name', 'N/A')}")
+
+        for section in result.get('sections', []):
+            if section in result:
+                print(f"{section.capitalize()} Information: {result[section]}")
+
     else:
         print_red(f"Error: {response.status_code}, {response.text}")
 
-    print("\033[91m=\033[0m" * 30)  # Red line for AlienVault separator
-
-
+    print("\033[91m=\033[0m" * 30)
+    print("\n")	
 
 def check_ip_reputation(ip, api_key):
     url = f'https://www.virustotal.com/api/v3/ip_addresses/{ip}'
@@ -98,10 +117,7 @@ def check_ip_reputation(ip, api_key):
             print_red("No data available for this IP.")
     else:
         print_red(f"Error: {response.status_code}, {response.text}")
-    
-   # print("\033[91m-\033[0m" * 30)  # Red line
 
-    # WHOIS lookup
     try:
         obj = IPWhois(ip)
         results = obj.lookup_whois()
@@ -126,10 +142,10 @@ def check_ip_reputation(ip, api_key):
     except Exception as e:
         print(f"WHOIS lookup failed for IP {ip}: {e}")
 
-    print("\033[91m=\033[0m" * 30)  # Red line for WHOIS separator
-	
+    print("\033[91m=\033[0m" * 30)
+
 # Read IPs from a text file
-file_path = 'ip_addresses.txt'  # Replace with your file path
+file_path = 'ip_addresses.txt'
 with open(file_path, 'r') as file:
     ip_addresses = file.read().splitlines()
 
@@ -138,11 +154,9 @@ vt_api_key = get_api_key('virustotal_api_key.txt')
 abuse_ipdb_api_key = get_api_key('abuseipdb_api_key.txt')
 alien_api_key = get_api_key('alien_api_key.txt')
 
-if vt_api_key and abuse_ipdb_api_key:
-    # Check reputation and perform WHOIS lookup for each IP
+if vt_api_key and abuse_ipdb_api_key and alien_api_key:
     for ip in ip_addresses:
         check_ip_reputation(ip, vt_api_key)
         check_abuseipdb_reputation(ip, abuse_ipdb_api_key)
         check_alienvault_reputation(ip, alien_api_key)
-        #perform_scan(ip)
-        
+        # perform_scan(ip)
